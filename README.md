@@ -2,6 +2,31 @@
 
 We da best
 
+## Setup
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+To activate the environment in the future:
+```bash
+source venv/bin/activate
+```
+
+To deactivate when done:
+```bash
+deactivate
+```
+
+## Problem Overview
+
 
 Karman Line is where space starts at 100 km above sea level, so that is our initial height
 We are also saying that at 100 km air density is practically 0
