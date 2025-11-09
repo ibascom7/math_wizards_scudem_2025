@@ -11,8 +11,9 @@ Assuming all particles are spheres.
 """
 def calculate_mass(particle):
     # Density = Mass / Volume
+    radius_cm = particle["r"] * 1e-4
     average_density = 2.0
-    volume = (4/3) * np.pi * particle["r"]**3
+    volume = (4/3) * np.pi * radius_cm**3
     mass = average_density * volume
     return mass
 
@@ -25,5 +26,8 @@ def calculate_ke(particle):
     kinetic_energy = 0.5 * mass * (particle["v"]**2)
     return kinetic_energy
 
+
 p = {"r": 5, "v": 2}
+
+
 print(calculate_ke(p))
