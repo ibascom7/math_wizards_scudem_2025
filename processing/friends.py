@@ -17,35 +17,35 @@ def calculate_mass(particle):
     mass = average_density * volume
     return mass
 
-"""
-Calculate the kinetic energy of the particle
-"""
+
+def calculate_air_density(height):
+    if height > 25000:
+        T = -131.21 + 0.00299*height
+        p = 2.488 * ((T + 273.1)/216.6)**(-11.388)
+        air_density = p / (0.2869 * (T + 273.1))
+    elif height > 11000 & height < 25000:
+        T = -56.46
+        p = 22.65 * np.exp(1.73 - 0.000157*height)
+        air_density = p / (0.2869 * (T + 273.1))
+    elif height < 11000:
+        T = 15.04 - 0.00649*height
+        p = 101.29 * ((T + 273.1)/288.08)**(5.256)
+        air_density = p / (0.2869 * (T + 273.1))
+    return air_density
+
+
 def calculate_reynolds(particle, air_density, air_viscocity):
     Re = air_density*particle["v"]*(particle["r"]*2)/air_viscocity
 
-
+"""
+Calculate the kinetic energy of the particle
+"""
 def calculate_ke(particle):
     # KE = (1/2)mv^2
     mass = calculate_mass(particle)
     kinetic_energy = 0.5 * mass * (particle["v"]**2)
     return kinetic_energy
 
-def calculate_air_density(height):
-    # Equation for air density given a height
-    air_density = 100
-    # Air density should increase as height decreases 
-    return air_density
-
-def drag_coefficent(particle, air_density):
-    # Equation or method of finding drag coefficient based on air density
-    D_c = .1
-    return D_c
-
-def drag_force(particle, drag_coef, air_density):
-    # Cases for different sizes
-    # Equations for drag of each case
-    drag = 1000000
-    return drag
 
 p = {"r": 5, "v": 2}
 
