@@ -20,6 +20,10 @@ def calculate_mass(particle):
 """
 Calculate the kinetic energy of the particle
 """
+def calculate_reynolds(particle, air_density, air_viscocity):
+    Re = air_density*particle["v"]*(particle["r"]*2)/air_viscocity
+
+
 def calculate_ke(particle):
     # KE = (1/2)mv^2
     mass = calculate_mass(particle)
