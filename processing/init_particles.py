@@ -49,7 +49,8 @@ def generate_particles(n_particles):
     for i in range(n_particles):
         particle = {
             "r": radii[i],      # radius in microns
-            "v": velocities[i]  # velocity in km/s
+            "v": velocities[i],  # velocity in km/s
+            "active": True
         }
         particles.append(particle)
 
