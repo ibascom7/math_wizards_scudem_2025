@@ -57,7 +57,12 @@ Calculate the Reynolds number of the particle
 """
 def calculate_reynolds(particle, air_density, air_viscocity):
     Re = air_density*particle["v"]*(particle["r"]*2)/air_viscocity
+    return Re
 
+def calculate_knudsen(particle):
+    lbda = 65e-9
+    Kn = lbda / particle["r"]
+    return Kn
 """
 Calculate the kinetic energy of the particle
 """
