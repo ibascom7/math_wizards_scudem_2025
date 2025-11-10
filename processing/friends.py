@@ -33,6 +33,21 @@ def calculate_air_density(height):
         air_density = p / (0.2869 * (T + 273.1))
     return air_density
 
+def calculate_air_viscocity(height):
+    T_0 = 518.7
+    air_viscocity_0 = 3.62e-7
+    if height > 25000:
+        T = -131.21 + 0.00299*height
+        air_viscocity = air_viscocity_0*((T/T_0)**(1.5))*((T_0 + 198.72)/(T + 198.72))  
+    elif height > 11000 & height < 25000:
+        T = -56.46
+        air_viscocity = air_viscocity_0*((T/T_0)**(1.5))*((T_0 + 198.72)/(T + 198.72))
+
+    elif height < 11000:
+        T = 15.04 - 0.00649*height
+        air_viscocity = air_viscocity_0*((T/T_0)**(1.5))*((T_0 + 198.72)/(T + 198.72))
+        
+    return air_viscocity
 
 def calculate_reynolds(particle, air_density, air_viscocity):
     Re = air_density*particle["v"]*(particle["r"]*2)/air_viscocity
