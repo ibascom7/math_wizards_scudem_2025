@@ -32,7 +32,9 @@ def calculate_air_density(height):
         p = 101.29 * ((T + 273.1)/288.08)**(5.256)
         air_density = p / (0.2869 * (T + 273.1))
     return air_density
-
+"""
+Calculate the Knudsen number of the particle
+"""
 def calculate_air_viscocity(height):
     T_0 = 518.7
     air_viscocity_0 = 3.62e-7
@@ -46,9 +48,11 @@ def calculate_air_viscocity(height):
     elif height < 11000:
         T = 15.04 - 0.00649*height
         air_viscocity = air_viscocity_0*((T/T_0)**(1.5))*((T_0 + 198.72)/(T + 198.72))
-        
-    return air_viscocity
 
+    return air_viscocity
+"""
+Calculate the Reynolds number of the particle
+"""
 def calculate_reynolds(particle, air_density, air_viscocity):
     Re = air_density*particle["v"]*(particle["r"]*2)/air_viscocity
 
