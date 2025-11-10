@@ -26,6 +26,22 @@ def calculate_ke(particle):
     kinetic_energy = 0.5 * mass * (particle["v"]**2)
     return kinetic_energy
 
+def calculate_air_density(height):
+    # Equation for air density given a height
+    air_density = 100
+    # Air density should increase as height decreases 
+    return air_density
+
+def drag_coefficent(particle, air_density):
+    # Equation or method of finding drag coefficient based on air density
+    D_c = .1
+    return D_c
+
+def drag_force(particle, drag_coef, air_density):
+    # Cases for different sizes
+    # Equations for drag of each case
+    drag = 1000000
+    return drag
 
 p = {"r": 5, "v": 2}
 
