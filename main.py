@@ -10,7 +10,7 @@ from processing.init_particles import generate_particles as gen_p
 from plots.distribution_graph import plot_distribution as pd
 
 def go_do_thing_time():
-    particles = gen_p
+    particles = gen_p(1000)
     pd(particles)
 
 go_do_thing_time()

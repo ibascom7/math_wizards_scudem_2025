@@ -3,7 +3,7 @@ This will create a graph of the distribution of given particles
 by radius and velocity 
 """
 
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 def plot_distribution(particles):
     radii = [particle["r"] for particle in particles]
