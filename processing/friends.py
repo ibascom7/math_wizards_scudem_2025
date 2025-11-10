@@ -17,7 +17,9 @@ def calculate_mass(particle):
     mass = average_density * volume
     return mass
 
-
+"""
+Calculate the air density at a given height
+"""
 def calculate_air_density(height):
     if height > 25000:
         T = -131.21 + 0.00299*height
@@ -33,7 +35,7 @@ def calculate_air_density(height):
         air_density = p / (0.2869 * (T + 273.1))
     return air_density
 """
-Calculate the Knudsen number of the particle
+Calculate the air viscocity at a given height
 """
 def calculate_air_viscocity(height):
     T_0 = 518.7
