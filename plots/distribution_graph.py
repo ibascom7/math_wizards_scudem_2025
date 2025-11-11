@@ -22,8 +22,8 @@ def plot_distribution(particles, title="Distribution of Particles by Radius and 
     ax.set_xlabel("Radius (microns)")
     ax.set_ylabel("Velocity (km/s)")
     ax.set_title(title)
-    ax.set_xlim(0, max(radii) * 1.1)  # Start at 0, add 10% padding on right
-    ax.set_ylim(0, max(velocities) * 1.1)  # Start at 0, add 10% padding on top
+    ax.set_xlim(0, 100) 
+    ax.set_ylim(0, 72.5)
 
     # Add grid for better readability
     ax.grid(True, alpha=0.3)

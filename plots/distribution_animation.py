@@ -20,7 +20,7 @@ Args:
 def kawaii_anime(history, save_path=None):
     fig, ax = plt.subplots()
     
-    scatter = ax.scatter([], [])
+    scatter = ax.scatter([], [], s=2)
 
     ax.set_xlabel("Radius (microns)")
     ax.set_ylabel("Velocity (km/s)")
@@ -35,8 +35,8 @@ def kawaii_anime(history, save_path=None):
         all_radii.extend(h['radii'])
         all_velocities.extend(h['velocities'])
 
-    ax.set_xlim(0, max(all_radii) * 1.1)  # Add 10% padding
-    ax.set_ylim(0, max(all_velocities) * 1.1)
+    ax.set_xlim(0, 100) 
+    ax.set_ylim(0, 72.5)
 
     def update(frame):
           # frame is passed as 0, 1, 2, ... by FuncAnimation()

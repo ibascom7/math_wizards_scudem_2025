@@ -120,16 +120,26 @@ Dimensionless number indicating gas rarefaction:
 
 Parameters:
     particle: dict with 'r' (radius in microns)
+    air_density: density of air in kg/m³ (optional, for altitude-dependent calculation)
 
 Returns:
     Knudsen number (dimensionless)
 """
-def calculate_knudsen(particle):
-    # Mean free path of air molecules at standard conditions
-    # λ ≈ 65 nm = 0.065 microns
-    # (varies with altitude, but this is a reasonable approximation)
-    lambda_microns = 0.065  # Mean free path in microns
+def calculate_knudsen(particle, air_density=None):
     r_microns = particle["r"]
+
+    if air_density is None:
+        # Use sea-level approximation
+        lambda_microns = 0.065  # Mean free path in microns at sea level
+    else:
+        # Calculate altitude-dependent mean free path
+        # λ = (k*T) / (√2 * π * d² * P)
+        # Simplified: λ ≈ (μ / P) * √(π*R*T / (2*M))
+        # Even simpler approximation: λ ∝ 1/ρ
+        # At sea level: λ₀ = 65 nm, ρ₀ = 1.225 kg/m³
+        rho_sea_level = 1.225  # kg/m³
+        lambda_sea_level = 0.065  # microns
+        lambda_microns = lambda_sea_level * (rho_sea_level / air_density)
 
     Kn = lambda_microns / r_microns
     return Kn
@@ -141,11 +151,10 @@ def calculate_knudsen(particle):
 """
 Calculate drag force on a particle
 
-Uses different drag models depending on Reynolds number (Re):
-- Re < 1: Stokes regime (linear drag)
-  - With Knudsen correction for rarefied gas (high altitude)
-- 1 < Re < 1000: Intermediate regime (empirical correlation)
-- Re > 1000: High Reynolds regime (quadratic drag)
+Uses different drag models depending on flow regime (Knudsen number):
+- Kn > 10: Free molecular flow - Epstein drag (high altitude, rarefied air)
+- 0.01 < Kn < 10: Transition regime - interpolated drag
+- Kn < 0.01: Continuum flow - Reynolds-based drag (Stokes/intermediate/turbulent)
 
 Parameters:
     particle: dict with 'r' (radius in microns) and 'v' (velocity in km/s)
@@ -167,40 +176,126 @@ def calculate_drag(particle, height):
     if v_ms < 0.001 or r_meters < 1e-10:
         return 0
 
-    # Determine regime using Reynolds number
-    Re = calculate_reynolds(particle, air_density, air_viscosity)
+    # Determine flow regime using Knudsen number (altitude-dependent)
+    Kn = calculate_knudsen(particle, air_density)
 
-    if Re < 1:
-        # ===== STOKES REGIME (low Re) =====
-        # Basic formula: F = 6πμrv
+    if Kn > 10:
+        # ===== FREE MOLECULAR FLOW =====
+        # At high altitudes (>80 km), air is so thin that molecules act independently
 
-        Kn = calculate_knudsen(particle)
+        # Calculate thermal velocity: v_th = √(8kT/(π*m_air))
+        k_boltzmann = 1.380649e-23  # J/K
+        m_air = 4.8e-26  # kg (weighted average of N2 and O2)
 
-        if Kn < 0.1:
-            # Continuum flow - standard Stokes drag
-            drag = 6 * np.pi * air_viscosity * r_meters * v_ms
+        # Get temperature at this height
+        if height > 25000:
+            T_celsius = -131.21 + (0.00299 * height)
+        elif height >= 11000:
+            T_celsius = -56.46
         else:
-            # Rarefied flow - apply Cunningham slip correction
-            # Common at high altitudes where air is thin
-            alpha = 1.207
-            beta = 0.376
-            gamma = 0.332
-            C_slip = 1 + (Kn * (alpha + (beta * np.exp(-gamma / Kn))))
-            drag = (6 * np.pi * air_viscosity * r_meters * v_ms) / C_slip
+            T_celsius = 15.04 - (0.00649 * height)
 
-    elif 1 <= Re < 1000:
-        # ===== INTERMEDIATE REGIME =====
-        # Empirical correlation for transition region
-        C_d = (24.0 / Re) + (4.0 / np.sqrt(Re)) + 0.4
-        A = np.pi * (r_meters ** 2)  # Cross-sectional area
-        drag = 0.5 * C_d * air_density * A * (v_ms ** 2)
+        T_kelvin = T_celsius + 273.15
+        v_thermal = np.sqrt((8 * k_boltzmann * T_kelvin) / (np.pi * m_air))
+
+        # Check if hypersonic (v >> v_thermal) or subsonic (v << v_thermal)
+        speed_ratio = v_ms / v_thermal
+
+        if speed_ratio > 3:
+            # HYPERSONIC: Use ram pressure drag (v >> v_thermal)
+            # Meteors entering at km/s speeds
+            # F = Cd * ρ * A * v²
+            # For cosmic dust in free molecular flow, Cd ≈ 1.0-1.2 (partially diffuse reflection)
+            # Lower than Cd=2 for specular reflection
+            Cd = 1.0
+            A = np.pi * (r_meters ** 2)
+            drag = 0.5 * Cd * air_density * A * (v_ms ** 2)
+
+        elif speed_ratio < 0.3:
+            # SUBSONIC: Use Epstein drag (v << v_thermal)
+            # For slowly settling dust
+            # F = (4/3) * π * r² * ρ * v * v_thermal
+            drag = (4.0/3.0) * np.pi * (r_meters ** 2) * air_density * v_ms * v_thermal
+
+        else:
+            # TRANSITION: Interpolate between regimes
+            # At speed_ratio=3: use hypersonic, at speed_ratio=0.3: use Epstein
+            drag_hypersonic = 0.5 * 1.0 * air_density * (np.pi * r_meters**2) * (v_ms ** 2)
+            drag_epstein = (4.0/3.0) * np.pi * (r_meters ** 2) * air_density * v_ms * v_thermal
+
+            # Linear interpolation in log space
+            log_ratio = np.log10(speed_ratio)
+            weight_hypersonic = (log_ratio - np.log10(0.3)) / (np.log10(3) - np.log10(0.3))
+            weight_hypersonic = np.clip(weight_hypersonic, 0, 1)
+
+            drag = weight_hypersonic * drag_hypersonic + (1 - weight_hypersonic) * drag_epstein
+
+    elif Kn > 0.01:
+        # ===== TRANSITION REGIME =====
+        # Interpolate between Epstein (free molecular) and continuum drag
+        # Simple linear interpolation in log space
+
+        # Calculate Epstein drag (as above)
+        k_boltzmann = 1.380649e-23
+        m_air = 4.8e-26
+        if height > 25000:
+            T_celsius = -131.21 + (0.00299 * height)
+        elif height >= 11000:
+            T_celsius = -56.46
+        else:
+            T_celsius = 15.04 - (0.00649 * height)
+        T_kelvin = T_celsius + 273.15
+        v_thermal = np.sqrt((8 * k_boltzmann * T_kelvin) / (np.pi * m_air))
+        drag_epstein = (4.0/3.0) * np.pi * (r_meters ** 2) * air_density * v_ms * v_thermal
+
+        # Calculate continuum drag (Stokes with slip correction)
+        C_slip = 1 + (Kn * (1.207 + (0.376 * np.exp(-0.332 / Kn))))
+        drag_stokes = (6 * np.pi * air_viscosity * r_meters * v_ms) / C_slip
+
+        # Interpolate: weight by log(Kn)
+        # At Kn=10: use Epstein, at Kn=0.01: use Stokes
+        log_Kn = np.log10(Kn)
+        weight_epstein = (log_Kn - (-2)) / (1 - (-2))  # (log(Kn) - log(0.01)) / (log(10) - log(0.01))
+        weight_epstein = np.clip(weight_epstein, 0, 1)
+
+        drag = weight_epstein * drag_epstein + (1 - weight_epstein) * drag_stokes
 
     else:
-        # ===== HIGH REYNOLDS REGIME (Re >= 1000) =====
-        # Turbulent flow - constant drag coefficient
-        C_d = 0.44  # Typical for sphere in turbulent flow
-        A = np.pi * (r_meters ** 2)
-        drag = 0.5 * C_d * air_density * A * (v_ms ** 2)
+        # ===== CONTINUUM FLOW (Reynolds-based) =====
+        # At low altitudes, use traditional drag models based on Reynolds number
+        Re = calculate_reynolds(particle, air_density, air_viscosity)
+
+        if Re < 1:
+            # ===== STOKES REGIME (low Re) =====
+            # Basic formula: F = 6πμrv
+
+            Kn_local = calculate_knudsen(particle, air_density)
+
+            if Kn_local < 0.1:
+                # Continuum flow - standard Stokes drag
+                drag = 6 * np.pi * air_viscosity * r_meters * v_ms
+            else:
+                # Rarefied flow - apply Cunningham slip correction
+                # Common at high altitudes where air is thin
+                alpha = 1.207
+                beta = 0.376
+                gamma = 0.332
+                C_slip = 1 + (Kn_local * (alpha + (beta * np.exp(-gamma / Kn_local))))
+                drag = (6 * np.pi * air_viscosity * r_meters * v_ms) / C_slip
+
+        elif 1 <= Re < 1000:
+            # ===== INTERMEDIATE REGIME =====
+            # Empirical correlation for transition region
+            C_d = (24.0 / Re) + (4.0 / np.sqrt(Re)) + 0.4
+            A = np.pi * (r_meters ** 2)  # Cross-sectional area
+            drag = 0.5 * C_d * air_density * A * (v_ms ** 2)
+
+        else:
+            # ===== HIGH REYNOLDS REGIME (Re >= 1000) =====
+            # Turbulent flow - constant drag coefficient
+            C_d = 0.44  # Typical for sphere in turbulent flow
+            A = np.pi * (r_meters ** 2)
+            drag = 0.5 * C_d * air_density * A * (v_ms ** 2)
 
     return drag
 
@@ -272,9 +367,11 @@ def calculate_ablation(particle, F_drag):
         dr_dh = 0
 
     # Convert back to microns/km
-    # dr_dh is in m/m (dimensionless)
-    # To get microns/km: multiply by 1e6 (m→microns) and divide by 1000 (per-m → per-km)
-    dr_dh_microns_per_km = dr_dh * 1e6 / 1000  # m/m → microns/km = dr_dh * 1000
+    # dr_dh is in m/m (dimensionless - meters of radius per meter of altitude)
+    # Over 1 km (1000 m) of altitude: radius changes by dr_dh * 1000 meters
+    # Convert meters to microns: multiply by 1e6
+    # Total: dr_dh * 1000 * 1e6 = dr_dh * 1e9
+    dr_dh_microns_per_km = dr_dh * 1e9  # m/m → microns/km
 
     return dr_dh_microns_per_km  # Will be negative (radius decreases)
 
