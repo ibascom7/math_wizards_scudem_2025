@@ -10,14 +10,18 @@ import numpy as np
 Calculate the mass of the particle
 Assuming that particle density is 2 g/cm^3.
 Assuming all particles are spheres.
+
+Returns:
+    mass in kilograms (kg) for SI unit consistency
 """
 def calculate_mass(particle):
     # Density = Mass / Volume
-    radius_cm = particle["r"] * 1e-4
-    average_density = 2.0
-    volume = (4/3) * np.pi * radius_cm**3
-    mass = average_density * volume
-    return mass
+    radius_cm = particle["r"] * 1e-4  # microns to cm
+    average_density = 2.0  # g/cm³
+    volume = (4.0/3.0) * np.pi * (radius_cm**3)  # cm³
+    mass_grams = average_density * volume  # grams
+    mass_kg = mass_grams / 1000.0  # Convert to kilograms for SI consistency
+    return mass_kg
 
 
 
@@ -28,16 +32,16 @@ Temperatures and pressures of Upper Stratosphere, Lower Stratosphere, and Tropos
 """
 def calculate_air_density(height):
     if height > 25000:
-        T = -131.21 + 0.00299*height
-        p = 2.488 * ((T + 273.1)/216.6)**(-11.388)
+        T = -131.21 + (0.00299 * height)
+        p = 2.488 * (((T + 273.1) / 216.6) ** (-11.388))
         air_density = p / (0.2869 * (T + 273.1))
-    elif height > 11000 and height < 25000:
+    elif height >= 11000 and height <= 25000:
         T = -56.46
-        p = 22.65 * np.exp(1.73 - 0.000157*height)
+        p = 22.65 * np.exp(1.73 - (0.000157 * height))
         air_density = p / (0.2869 * (T + 273.1))
-    elif height < 11000:
-        T = 15.04 - 0.00649*height
-        p = 101.29 * ((T + 273.1)/288.08)**(5.256)
+    else:  # height < 11000
+        T = 15.04 - (0.00649 * height)
+        p = 101.29 * (((T + 273.1) / 288.08) ** 5.256)
         air_density = p / (0.2869 * (T + 273.1))
     return air_density
 
@@ -54,15 +58,17 @@ def calculate_air_viscosity(height):
     T_0 = 518.7
     air_viscosity_0 = 3.62e-7
     if height > 25000:
-        T = -131.21 + 0.00299*height
-        air_viscosity = air_viscosity_0*((T/T_0)**(1.5))*((T_0 + 198.72)/(T + 198.72))  
-    elif height > 11000 and height < 25000:
+        T = -131.21 + (0.00299 * height)
+        T_abs = T + 459.67  # Convert Fahrenheit to Rankine (absolute scale)
+        air_viscosity = air_viscosity_0 * ((T_abs / T_0) ** 1.5) * ((T_0 + 198.72) / (T_abs + 198.72))
+    elif height >= 11000 and height <= 25000:
         T = -56.46
-        air_viscosity = air_viscosity_0*((T/T_0)**(1.5))*((T_0 + 198.72)/(T + 198.72))
-
-    elif height < 11000:
-        T = 15.04 - 0.00649*height
-        air_viscosity = air_viscosity_0*((T/T_0)**(1.5))*((T_0 + 198.72)/(T + 198.72))
+        T_abs = T + 459.67  # Convert Fahrenheit to Rankine
+        air_viscosity = air_viscosity_0 * ((T_abs / T_0) ** 1.5) * ((T_0 + 198.72) / (T_abs + 198.72))
+    else:  # height < 11000
+        T = 15.04 - (0.00649 * height)
+        T_abs = T + 459.67  # Convert Fahrenheit to Rankine
+        air_viscosity = air_viscosity_0 * ((T_abs / T_0) ** 1.5) * ((T_0 + 198.72) / (T_abs + 198.72))
 
     return air_viscosity
 
@@ -93,7 +99,7 @@ def calculate_reynolds(particle, air_density, air_viscosity):
     v_ms = particle["v"] * 1000        # km/s to m/s
     diameter_m = particle["r"] * 2e-6  # radius in microns to diameter in meters
 
-    Re = air_density * v_ms * diameter_m / air_viscosity
+    Re = (air_density * v_ms * diameter_m) / air_viscosity
     return Re
 
 
@@ -179,22 +185,22 @@ def calculate_drag(particle, height):
             alpha = 1.207
             beta = 0.376
             gamma = 0.332
-            C_slip = 1 + Kn * (alpha + beta * np.exp(-gamma / Kn))
+            C_slip = 1 + (Kn * (alpha + (beta * np.exp(-gamma / Kn))))
             drag = (6 * np.pi * air_viscosity * r_meters * v_ms) / C_slip
 
     elif 1 <= Re < 1000:
         # ===== INTERMEDIATE REGIME =====
         # Empirical correlation for transition region
-        C_d = 24/Re + 4/np.sqrt(Re) + 0.4
-        A = np.pi * r_meters**2  # Cross-sectional area
-        drag = 0.5 * C_d * air_density * A * v_ms**2
+        C_d = (24.0 / Re) + (4.0 / np.sqrt(Re)) + 0.4
+        A = np.pi * (r_meters ** 2)  # Cross-sectional area
+        drag = 0.5 * C_d * air_density * A * (v_ms ** 2)
 
     else:
         # ===== HIGH REYNOLDS REGIME (Re >= 1000) =====
         # Turbulent flow - constant drag coefficient
         C_d = 0.44  # Typical for sphere in turbulent flow
-        A = np.pi * r_meters**2
-        drag = 0.5 * C_d * air_density * A * v_ms**2
+        A = np.pi * (r_meters ** 2)
+        drag = 0.5 * C_d * air_density * A * (v_ms ** 2)
 
     return drag
 
@@ -246,7 +252,7 @@ def calculate_ablation(particle, F_drag):
     v_ms = particle['v'] * 1000  # km/s to m/s
 
     # Avoid division by zero
-    if particle['v'] < 0.001 or r_meters < 1e-10:  # Very slow or tiny particles
+    if particle['v'] < 0.00001 or r_meters < 1e-10:  # Very slow or tiny particles
         return 0
 
     # Energy going into heating per unit height (J/m)
@@ -255,18 +261,20 @@ def calculate_ablation(particle, F_drag):
     heating_per_height = epsilon * F_drag  # J/m (energy per meter of altitude change)
 
     # Mass loss per unit height (kg/m)
-    dm_dh = -heating_per_height / L_vap
+    dm_dh = (-heating_per_height) / L_vap
 
     # Convert mass loss to radius change
     # m = (4/3)πr³ρ → dm = 4πr²ρ dr
     # dr/dh = (dm/dh) / (4πr²ρ)
     if r_meters > 0:
-        dr_dh = dm_dh / (4 * np.pi * r_meters**2 * rho_particle)
+        dr_dh = dm_dh / (4 * np.pi * (r_meters ** 2) * rho_particle)
     else:
         dr_dh = 0
 
     # Convert back to microns/km
-    dr_dh_microns_per_km = dr_dh * 1e6 * 1000  # m/m → microns/km
+    # dr_dh is in m/m (dimensionless)
+    # To get microns/km: multiply by 1e6 (m→microns) and divide by 1000 (per-m → per-km)
+    dr_dh_microns_per_km = dr_dh * 1e6 / 1000  # m/m → microns/km = dr_dh * 1000
 
     return dr_dh_microns_per_km  # Will be negative (radius decreases)
 
@@ -304,7 +312,7 @@ def check_fragmentation(particle, air_density):
     v_ms = particle['v'] * 1000  # km/s to m/s
 
     # Calculate ram pressure (Pa)
-    ram_pressure = 0.5 * air_density * v_ms**2
+    ram_pressure = 0.5 * air_density * (v_ms ** 2)
 
     # Check if fragmentation occurs
     if ram_pressure > strength:

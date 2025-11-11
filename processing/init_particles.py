@@ -19,9 +19,9 @@ def generate_particles(n_particles):
 
     # ===== RADIUS DISTRIBUTION (Power Law) =====
     # Power law: P(r) ~ r^(-3.5)
-    # Range: 0.1 to 100 microns (avoiding exactly 0)
-    r_min = 0.1  # microns
-    r_max = 100  # microns
+    # Range: 10 to 1000 microns (realistic meteor sizes)
+    r_min = 10  # microns (was 0.1 - too small!)
+    r_max = 1000  # microns
     alpha = 3.5  # power law exponent
 
     # Generate power law distributed radii
